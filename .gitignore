@@ -1,0 +1,9 @@
+.env
+bin
+coverage.*
+
+.DS_Store
+Thumbs.db
+
+.idea
+.vscode
