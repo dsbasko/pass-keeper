@@ -14,6 +14,7 @@ entity secret {
   name: string
   type: varchar(n)
   secret: []byte(b size)
+  meta: string
   created_at: datetime
   updated_at: datetime
 }
