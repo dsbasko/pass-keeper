@@ -57,7 +57,7 @@ func Test_New(t *testing.T) {
 			wantOut: []string{
 				`"service":"test_service"`,
 				`"level":"INFO"`,
-				`"msg":"info layer"`,
+				`"msg":"info layer2"`,
 				`"msg":"info layer format Info"`,
 				`"msg":"info layer with args"`,
 				`"argLevel":"Info"`,
