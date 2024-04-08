@@ -1,0 +1,39 @@
+@startuml edr
+
+entity user {
+  * user_id: uuid <<generated>>
+  email: string
+  password_hash: string
+  created_at: datetime
+  updated_at: datetime
+}
+
+entity secret {
+  * secret_id: uuid <<generated>>
+  user_id: uuid <<FK>>
+  name: string
+  type: varchar(n)
+  secret: []byte(b size)
+  created_at: datetime
+  updated_at: datetime
+}
+
+entity vault {
+  * vault_id: uuid <<generated>>
+  user_id: uuid <<FK>>
+  name: string
+  created_at: datetime
+  updated_at: datetime
+}
+
+entity secret_vault {
+  * secret_id: uuid <<FK>>
+  * vault_id: uuid <<FK>>
+}
+
+user ||--{ secret
+user ||--{ vault
+secret ||--{ secret_vault
+vault ||--{ secret_vault
+
+@enduml
