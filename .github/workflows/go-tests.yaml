@@ -18,6 +18,9 @@ jobs:
         with:
           go-version: '1.22'
 
+      - name: Create environment variables
+        run: mv ./configs/client.example.env ./configs/client.env && mv ./configs/server.example.env ./configs/server.env
+        
       - name: Install deps
         run: make install-deps
 

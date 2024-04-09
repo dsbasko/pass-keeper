@@ -1,4 +1,6 @@
-.PHONY: client server server-dev test test-cover test-cover-svg test-cover-html lint install-deps
+include $(CURDIR)/configs/server.env
+
+.PHONY: client server server-dev test test-cover test-cover-svg test-cover-html lint install-deps postgre-start postgre-stop postgre-migration-create postgre-migration-up postgre-migration-down
 .SILENT:
 
 client:
@@ -31,11 +33,32 @@ lint:
 install-deps:
 	@GOBIN=$(CURDIR)/bin go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	@GOBIN=$(CURDIR)/bin go install github.com/nikolaydubina/go-cover-treemap@latest
+	@GOBIN=$(CURDIR)/bin go install github.com/pressly/goose/v3/cmd/goose@latest
 	@go mod tidy
 
-install-deps-bin:
-	@go mod tidy
+# ---------------
 
+postgre-start: postgre-stop
+	@docker run -d --rm \
+		--name pass_keeper_psql \
+		-p $(POSTGRE_PORT):5432 \
+		-e POSTGRES_USER=$(POSTGRE_USER) \
+		-e POSTGRES_PASSWORD=$(POSTGRE_PASS) \
+		-e POSTGRES_DB=$(POSTGRE_DB) \
+		postgres:15.4-alpine3.17;
+
+postgre-stop:
+	@docker stop pass_keeper_psql > /dev/null 2>&1 || true;
+
+postgre-migration-create:
+	@mkdir -p migrations
+	@$(CURDIR)/bin/goose -dir ./migrations postgres "$(POSTGRE_DSN)" create $(name) sql
+
+postgre-migration-up:
+	@$(CURDIR)/bin/goose -dir ./migrations postgres "$(POSTGRE_DSN)" up
+
+postgre-migration-down:
+	@$(CURDIR)/bin/goose -dir ./migrations postgres "$(POSTGRE_DSN)" down
 
 # ---------------
 

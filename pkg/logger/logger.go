@@ -38,8 +38,9 @@ func New(env, serviceName string) (Logger, error) {
 	switch env {
 	case "dev":
 		return &Log{
-			log: slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-				Level: slog.LevelDebug,
+			log: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+				Level:     slog.LevelDebug,
+				AddSource: true,
 			})),
 		}, nil
 	case "prod":
