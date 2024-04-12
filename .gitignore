@@ -1,6 +1,10 @@
-.env
+include configs/server.env
 bin
 coverage.*
+
+**.env
+!**.example.env
+!stub.env
 
 .DS_Store
 Thumbs.db
