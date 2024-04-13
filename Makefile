@@ -34,6 +34,7 @@ install-deps:
 	@GOBIN=$(CURDIR)/bin go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	@GOBIN=$(CURDIR)/bin go install github.com/nikolaydubina/go-cover-treemap@latest
 	@GOBIN=$(CURDIR)/bin go install github.com/pressly/goose/v3/cmd/goose@latest
+	@GOBIN=$(CURDIR)/bin go install golang.org/x/tools/cmd/godoc@latest
 	@go mod tidy
 
 # ---------------
