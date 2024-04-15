@@ -7,7 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 
-	"github.com/dsbasko/pass-keeper/pkg/errors"
+	errWrapper "github.com/dsbasko/pass-keeper/pkg/err-wrapper"
 )
 
 // Encrypt - шифрует данные
@@ -22,16 +22,16 @@ import (
 //		panic(err)
 //	}
 func Encrypt(key, data []byte) (encryptData []byte, err error) {
-	defer errors.ErrorPtrWithOP(&err, "crypt.Encrypt")
+	defer errWrapper.PtrWithOP(&err, "crypt.Encrypt")
 
 	aesBlock, err := aes.NewCipher(hash(key))
 	if err != nil {
-		return []byte{}, errors.ErrorWithOP(err, "aes.NewCipher")
+		return []byte{}, errWrapper.WithOP(err, "aes.NewCipher")
 	}
 
 	aesGCM, err := cipher.NewGCM(aesBlock)
 	if err != nil {
-		return []byte{}, errors.ErrorWithOP(err, "cipher.NewGCM")
+		return []byte{}, errWrapper.WithOP(err, "cipher.NewGCM")
 	}
 
 	nonce := make([]byte, aesGCM.NonceSize())
@@ -55,16 +55,16 @@ func Encrypt(key, data []byte) (encryptData []byte, err error) {
 //			panic(err)
 //	}
 func Decrypt(key, encryptData []byte) (decryptData []byte, err error) {
-	defer errors.ErrorPtrWithOP(&err, "crypt.Decrypt")
+	defer errWrapper.PtrWithOP(&err, "crypt.Decrypt")
 
 	aesBlock, err := aes.NewCipher(hash(key))
 	if err != nil {
-		return []byte{}, errors.ErrorWithOP(err, "aes.NewCipher")
+		return []byte{}, errWrapper.WithOP(err, "aes.NewCipher")
 	}
 
 	aesGCM, err := cipher.NewGCM(aesBlock)
 	if err != nil {
-		return []byte{}, errors.ErrorWithOP(err, "cipher.NewGCM")
+		return []byte{}, errWrapper.WithOP(err, "cipher.NewGCM")
 	}
 
 	nonceSize := aesGCM.NonceSize()
@@ -72,7 +72,7 @@ func Decrypt(key, encryptData []byte) (decryptData []byte, err error) {
 
 	decryptData, err = aesGCM.Open(nil, nonce, cipherText, nil)
 	if err != nil {
-		return []byte{}, errors.ErrorWithOP(err, "aesGCM.Open")
+		return []byte{}, errWrapper.WithOP(err, "aesGCM.Open")
 	}
 
 	return decryptData, nil
