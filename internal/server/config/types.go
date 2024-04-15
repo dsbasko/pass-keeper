@@ -2,18 +2,18 @@ package config
 
 import "time"
 
-type config struct {
-	Env        string `env:"ENV" default:"prod"`
-	AppName    string `env:"APP_NAME"`
-	Controller controller
-	Provider   provider
+type Config struct {
+	Env      string `env:"ENV" default:"prod"`
+	AppName  string `env:"APP_NAME"`
+	Endpoint endpoint
+	Provider provider
 }
 
-type controller struct {
-	GRPC controllerGRPC
+type endpoint struct {
+	GRPC endpointGRPC
 }
 
-type controllerGRPC struct {
+type endpointGRPC struct {
 	Port      int `env:"GRPC_PORT"`
 	TimeoutMs int `env:"GRPC_TIMEOUT_MS"`
 }
@@ -32,6 +32,6 @@ type postgre struct {
 	DSN      string `env:"POSTGRE_DSN"`
 }
 
-func (c *controllerGRPC) Timeout() time.Duration {
+func (c *endpointGRPC) Timeout() time.Duration {
 	return time.Duration(c.TimeoutMs) * time.Millisecond
 }

@@ -8,13 +8,13 @@ import (
 )
 
 func Test_Timeout(t *testing.T) {
-	cfg := &config{
-		Controller: controller{
-			GRPC: controllerGRPC{
+	cfg := &Config{
+		Endpoint: endpoint{
+			GRPC: endpointGRPC{
 				TimeoutMs: 1000,
 			},
 		},
 	}
 
-	assert.Equal(t, time.Duration(1000)*time.Millisecond, cfg.Controller.GRPC.Timeout())
+	assert.Equal(t, time.Duration(1000)*time.Millisecond, cfg.Endpoint.GRPC.Timeout())
 }

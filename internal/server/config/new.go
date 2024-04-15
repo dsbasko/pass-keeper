@@ -10,7 +10,7 @@ import (
 
 var (
 	once sync.Once
-	cfg  config
+	cfg  Config
 )
 
 func Init(filePath string) (err error) {
@@ -35,6 +35,6 @@ func MustInit(envFilePath string) {
 	}
 }
 
-func Get() *config {
+func Get() *Config {
 	return &cfg
 }
