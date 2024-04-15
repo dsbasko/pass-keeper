@@ -5,7 +5,7 @@ import (
 
 	goCFG "github.com/dsbasko/go-cfg"
 
-	"github.com/dsbasko/pass-keeper/pkg/errors"
+	errWrapper "github.com/dsbasko/pass-keeper/pkg/err-wrapper"
 )
 
 var (
@@ -14,7 +14,7 @@ var (
 )
 
 func Init(filePath string) (err error) {
-	defer errors.ErrorPtrWithOP(&err, "config.Init")
+	defer errWrapper.PtrWithOP(&err, "config.Init")
 
 	once.Do(func() {
 		if err = goCFG.ReadFile(filePath, &cfg); err != nil {
