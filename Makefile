@@ -34,6 +34,9 @@ install-deps:
 	@GOBIN=$(CURDIR)/bin go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	@GOBIN=$(CURDIR)/bin go install github.com/nikolaydubina/go-cover-treemap@latest
 	@GOBIN=$(CURDIR)/bin go install github.com/pressly/goose/v3/cmd/goose@latest
+	@GOBIN=$(CURDIR)/bin go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
+	@GOBIN=$(CURDIR)/bin go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
+	@GOBIN=$(CURDIR)/bin go install go.uber.org/mock/mockgen@latest
 	@GOBIN=$(CURDIR)/bin go install golang.org/x/tools/cmd/godoc@latest
 	@go mod tidy
 
@@ -60,6 +63,19 @@ postgre-migration-up:
 
 postgre-migration-down:
 	@$(CURDIR)/bin/goose -dir ./migrations postgres "$(POSTGRE_DSN)" down
+
+# ---------------
+
+proto: proto-auth-v1
+
+proto-auth-v1:
+	@mkdir -p api/v1
+	@protoc --proto_path=$(CURDIR)/proto \
+		--go_out=$(CURDIR)/api/v1 --go_opt=paths=source_relative \
+			--plugin=protoc-gen-go=$(CURDIR)/bin/protoc-gen-go \
+		--go-grpc_out=$(CURDIR)/api/v1 --go-grpc_opt=paths=source_relative \
+			--plugin=protoc-gen-go-grpc=$(CURDIR)/bin/protoc-gen-go-grpc \
+		$(CURDIR)/proto/auth_v1.proto
 
 # ---------------
 

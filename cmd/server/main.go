@@ -3,6 +3,7 @@ package main
 import (
 	"path"
 
+	"github.com/dsbasko/pass-keeper/internal/server/app"
 	"github.com/dsbasko/pass-keeper/internal/server/config"
 	"github.com/dsbasko/pass-keeper/pkg/logger"
 )
@@ -12,5 +13,9 @@ func main() {
 	cfg := config.Get()
 
 	log := logger.MustNew(cfg.Env, cfg.AppName)
-	log.Info("Server started") // TODO Don't forget to remove нахрен
+
+	app.MustRun(app.Options{
+		Cfg:    cfg,
+		Logger: log,
+	})
 }
