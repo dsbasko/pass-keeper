@@ -2,72 +2,86 @@ package grpc
 
 import (
 	"context"
+	"net"
+
 	goGS "github.com/dsbasko/go-gs"
-	apiV1 "github.com/dsbasko/pass-keeper/api/v1"
-	"github.com/dsbasko/pass-keeper/internal/server/config"
-	grpc_mock "github.com/dsbasko/pass-keeper/internal/server/endpoint/grpc/mocks"
-	"github.com/dsbasko/pass-keeper/internal/server/endpoint/grpc/servers"
-	"github.com/dsbasko/pass-keeper/pkg/errors"
-	"github.com/dsbasko/pass-keeper/pkg/logger"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
-	"go.uber.org/mock/gomock"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"net"
+
+	apiV1 "github.com/dsbasko/pass-keeper/api/v1"
+	"github.com/dsbasko/pass-keeper/internal/server/config"
+	"github.com/dsbasko/pass-keeper/internal/server/endpoint/grpc/servers"
+	errWrapper "github.com/dsbasko/pass-keeper/pkg/err-wrapper"
+	"github.com/dsbasko/pass-keeper/pkg/logger"
 )
 
 type Options struct {
-	Logger logger.Logger
-	Cfg    *config.Config
-	GS     goGS.GracefulShutdowner
+	Logger      logger.Logger
+	Cfg         *config.Config
+	GS          goGS.GracefulShutdowner
+	AuthMutator servers.AuthMutator
 }
 
 func Run(ctx context.Context, opts Options) (err error) {
-	defer errors.ErrorPtrWithOP(&err, "grpc.Run")
+	defer errWrapper.PtrWithOP(&err, "grpc.Run")
 
+	// Валидация аргументов
 	switch {
+	case ctx == nil:
+		return ErrMissingContext
 	case opts.Cfg == nil:
-		err = ErrMissingConfig
-		return
+		return ErrMissingConfig
 	case opts.Logger == nil:
-		err = ErrMissingLogger
-		return
+		return ErrMissingLogger
 	case opts.GS == nil:
-		err = ErrMissingGS
-		return
+		return ErrMissingGS
+	case opts.AuthMutator == nil:
+		return ErrMissingAuthMutator
 	}
 
+	// Резервация порта
 	listen, err := net.ListenTCP("tcp", &net.TCPAddr{
 		Port: opts.Cfg.Endpoint.GRPC.Port,
 	})
 	if err != nil {
-		err = errors.ErrorWithOP(err, "net.ListenTCP")
-		return
+		return errWrapper.WithOP(err, "net.ListenTCP")
 	}
 
+	// Создание сервера с интерцепторами
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			recovery.UnaryServerInterceptor(),
 		),
 	)
 
+	// Регистрация сервера авторизации
 	authServer, err := servers.NewAuthServer(servers.AuthOptions{
 		Logger:  opts.Logger,
-		Mutator: grpc_mock.NewMockAuthMutator(&gomock.Controller{}), // TODO поменять
+		Mutator: opts.AuthMutator,
 	})
 	apiV1.RegisterAuthServer(srv, authServer)
 
+	// Подключение рефлексии
 	if opts.Cfg.Env == "dev" {
 		reflection.Register(srv)
 	}
 
+	// Запуск сервера
 	go runServer(ctx, listen, srv)
 	opts.Logger.InfoF("grpc server is running on port %d", opts.Cfg.Endpoint.GRPC.Port)
 
+	// GS отключение
 	opts.GS.Subscribe()
 	go gsStop(ctx, opts.GS, srv)
 
 	return nil
+}
+
+func MustRun(ctx context.Context, opts Options) {
+	if err := Run(ctx, opts); err != nil {
+		panic(err)
+	}
 }
 
 func runServer(ctx context.Context, listen *net.TCPListener, srv *grpc.Server) {

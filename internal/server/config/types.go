@@ -28,7 +28,7 @@ type postgre struct {
 	User     string `env:"POSTGRE_USER"`
 	Pass     string `env:"POSTGRE_PASS"`
 	DB       string `env:"POSTGRE_DB"`
-	MaxConns int    `env:"POSTGRE_MAX_CONNS"`
+	MaxConns int32  `env:"POSTGRE_MAX_CONNS"`
 	DSN      string `env:"POSTGRE_DSN"`
 }
 

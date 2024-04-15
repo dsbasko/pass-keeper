@@ -21,7 +21,7 @@ import (
 //	if err != nil {
 //		panic(err)
 //	}
-func Encrypt(key, data []byte) (encryptData []byte, err error) {
+func Encrypt(key, data []byte) (_ []byte, err error) {
 	defer errWrapper.PtrWithOP(&err, "crypt.Encrypt")
 
 	aesBlock, err := aes.NewCipher(hash(key))
@@ -54,7 +54,7 @@ func Encrypt(key, data []byte) (encryptData []byte, err error) {
 //	if err != nil {
 //			panic(err)
 //	}
-func Decrypt(key, encryptData []byte) (decryptData []byte, err error) {
+func Decrypt(key, encryptData []byte) (_ []byte, err error) {
 	defer errWrapper.PtrWithOP(&err, "crypt.Decrypt")
 
 	aesBlock, err := aes.NewCipher(hash(key))
@@ -70,7 +70,7 @@ func Decrypt(key, encryptData []byte) (decryptData []byte, err error) {
 	nonceSize := aesGCM.NonceSize()
 	nonce, cipherText := encryptData[:nonceSize], encryptData[nonceSize:]
 
-	decryptData, err = aesGCM.Open(nil, nonce, cipherText, nil)
+	decryptData, err := aesGCM.Open(nil, nonce, cipherText, nil)
 	if err != nil {
 		return []byte{}, errWrapper.WithOP(err, "aesGCM.Open")
 	}

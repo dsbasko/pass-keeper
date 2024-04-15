@@ -2,12 +2,16 @@ package app
 
 import (
 	"context"
-	gogs "github.com/dsbasko/go-gs"
+	"syscall"
+
+	goGS "github.com/dsbasko/go-gs"
+
 	"github.com/dsbasko/pass-keeper/internal/server/config"
 	"github.com/dsbasko/pass-keeper/internal/server/endpoint/grpc"
-	"github.com/dsbasko/pass-keeper/pkg/errors"
+	"github.com/dsbasko/pass-keeper/internal/server/provider/postgre"
+	"github.com/dsbasko/pass-keeper/internal/server/service/auth"
+	errWrapper "github.com/dsbasko/pass-keeper/pkg/err-wrapper"
 	"github.com/dsbasko/pass-keeper/pkg/logger"
-	"syscall"
 )
 
 type Options struct {
@@ -16,9 +20,10 @@ type Options struct {
 }
 
 func Run(opts Options) (err error) {
-	defer errors.ErrorPtrWithOP(&err, "app.Run")
+	defer errWrapper.PtrWithOP(&err, "app.Run")
 
-	gs, ctx, cancel := gogs.NewContext(
+	// Graceful shutdown
+	gs, ctx, cancel := goGS.NewContext(
 		context.Background(),
 		syscall.SIGTERM,
 		syscall.SIGINT,
@@ -27,15 +32,27 @@ func Run(opts Options) (err error) {
 	)
 	defer cancel()
 
-	err = grpc.Run(ctx, grpc.Options{
-		Cfg:    opts.Cfg,
+	// Подключение к БД
+	psql := postgre.MustNew(ctx, postgre.Options{
 		Logger: opts.Logger,
+		Cfg:    opts.Cfg,
 		GS:     gs,
 	})
-	if err != nil {
-		err = errors.ErrorWithOP(err, "grpc.Run")
-	}
 
+	// Сервис авторизации
+	authService := auth.MustNew(auth.Options{
+		Mutator: psql,
+	})
+
+	// Запуск gRPC сервера
+	grpc.MustRun(ctx, grpc.Options{
+		Cfg:         opts.Cfg,
+		Logger:      opts.Logger,
+		GS:          gs,
+		AuthMutator: authService,
+	})
+
+	// Ожидание завершения работы GS
 	gs.Wait()
 	opts.Logger.Info("server is stopped")
 

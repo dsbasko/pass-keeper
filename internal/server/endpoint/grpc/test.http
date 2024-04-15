@@ -1,0 +1,17 @@
+### Register
+GRPC localhost:3000/auth.Auth/Register
+Content-Type: application/json
+
+{
+  "email": "a2@a.com",
+  "password": "strong_password"
+}
+
+### Auth
+GRPC localhost:3000/auth.Auth/Login
+Content-Type: application/json
+
+{
+  "email": "",
+  "password": ""
+}

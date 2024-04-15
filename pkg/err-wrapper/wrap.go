@@ -12,7 +12,7 @@ func PtrWithOP(err *error, op string) { //nolint:gocritic
 
 func WithOP(err error, op string) error {
 	if err != nil {
-		return fmt.Errorf("%s: %v", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
 }
