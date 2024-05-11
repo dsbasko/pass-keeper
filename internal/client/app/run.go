@@ -80,13 +80,9 @@ func vaultsExample() []tui.VaultForView {
 	return vaults
 }
 
-func exit(cmdCh chan string) func() {
-	return func() {
-		cmdCh <- tui.Exit
-	}
-}
 func tuiInit(ctx context.Context, cmdCh chan string) *tui.OurTui {
-	tuiApp := tui.New(ctx, cmdCh)
+
+	tuiApp := tui.Init(ctx, cmdCh)
 	tuiApp.ExitFn = func() { cmdCh <- tui.Exit }
 	tuiApp.LogoutFn = func() { cmdCh <- tui.Logout }
 	tuiApp.VaultsFn = vaultsExample
@@ -99,6 +95,7 @@ func tuiInit(ctx context.Context, cmdCh chan string) *tui.OurTui {
 			os.Exit(1)
 		}
 		fmt.Println("exit tui app")
+		os.Exit(0)
 	}()
 	return tuiApp
 }
@@ -106,60 +103,9 @@ func tuiInit(ctx context.Context, cmdCh chan string) *tui.OurTui {
 func Run(ctx context.Context) (err error) {
 	cmdCh := make(chan string)
 	tuiApp := tuiInit(ctx, cmdCh)
-
-	go func(commandCh chan string) {
-		for {
-			select {
-			case <-ctx.Done():
-				tuiApp.App.Stop()
-				tuiApp = nil
-				return
-			case cmd := <-commandCh:
-				switch cmd {
-				// Я думал над тем, чтобы сделать мапу,
-				// но это была бы мапа map[string]interface{}
-				// потому что функции с разными сигнатурами,
-				// не получится их хранить и не кастовать
-				// так что смысла в этом нет(ИМХО)
-				case tui.Exit:
-					tuiApp.YesNow(tui.Exit, func() { os.Exit(0) },
-						func() { cmdCh <- tui.MainMenu })
-				case tui.Logout:
-					tuiApp.YesNow(tui.Logout, func() { os.Exit(0) },
-						func() { cmdCh <- tui.MainMenu })
-				case tui.StartMenu:
-					tuiApp.StartMenuScreen(func() { cmdCh <- tui.RegisterMenu },
-						func() { cmdCh <- tui.LoginMenu }, exit(cmdCh))
-				case tui.LoginMenu:
-					tuiApp.LoginScreen(func() {
-						cmdCh <- tui.EnterPIN
-					}, exit(cmdCh))
-				case tui.RegisterMenu:
-					tuiApp.RegisterScreen(func() {
-						cmdCh <- tui.CreatePIN
-					}, exit(cmdCh))
-				case tui.CreatePIN:
-					tuiApp.CreatePINScreen(func() {
-						cmdCh <- tui.LoginMenu
-					}, exit(cmdCh))
-				case tui.EnterPIN:
-					tuiApp.EnterPINScreen(func() {
-						cmdCh <- tui.Vaults
-					}, exit(cmdCh))
-				case tui.Vaults:
-					tuiApp.VaultsScreen()
-				case tui.VaultEdit:
-					tuiApp.VaultEditScreen()
-				case tui.SecretView:
-					tuiApp.SecretViewScreen()
-				case tui.SecretEdit:
-					tuiApp.SecretEditScreen()
-				}
-			}
-		}
-	}(cmdCh)
-
-	cmdCh <- tui.Vaults
+	defer tuiApp.App.Stop()
+	cmdCh <- tui.Vaults //точка входа в TUI, в реале будет зависеть от состояния аутентификации, либо tui.StartMenu, либо tui.EnterPIN
+	tuiApp.App.Sync()
 	<-ctx.Done()
 	return nil
 }

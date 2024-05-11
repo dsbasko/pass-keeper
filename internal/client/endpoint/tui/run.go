@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -253,11 +254,72 @@ func (t *OurTui) VaultEditScreen()  {}
 func (t *OurTui) SecretViewScreen() {}
 func (t *OurTui) SecretEditScreen() {}
 
-func New(ctx context.Context, ch chan string) *OurTui {
+func exit(cmdCh chan string) func() {
+	return func() {
+		cmdCh <- Exit
+	}
+}
+
+func Init(ctx context.Context, ch chan string) *OurTui {
 	t.App = tview.NewApplication()
 	t.App.EnableMouse(true)
 	t.cmdCh = ch
 	t.ctx = ctx
+	go func() {
+		defer t.App.EnableMouse(false)
+		for {
+			select {
+			case <-ctx.Done():
+				t.App.Stop()
+				t = nil
+				return
+			case cmd := <-t.cmdCh:
+				switch cmd {
+				// Я думал над тем, чтобы сделать мапу,
+				// но это была бы мапа map[string]interface{}
+				// потому что функции с разными сигнатурами,
+				// не получится их хранить и не кастовать
+				// так что смысла в этом нет(ИМХО)
+				case Exit:
+					t.YesNow(Exit, func() {
+						t.App.EnableMouse(false)
+						os.Exit(0)
+					},
+						func() { t.cmdCh <- MainMenu })
+				case Logout:
+					t.YesNow(Logout, func() { os.Exit(0) },
+						func() { t.cmdCh <- MainMenu })
+				case StartMenu:
+					t.StartMenuScreen(func() { t.cmdCh <- RegisterMenu },
+						func() { t.cmdCh <- LoginMenu }, exit(t.cmdCh))
+				case LoginMenu:
+					t.LoginScreen(func() {
+						t.cmdCh <- EnterPIN
+					}, exit(t.cmdCh))
+				case RegisterMenu:
+					t.RegisterScreen(func() {
+						t.cmdCh <- CreatePIN
+					}, exit(t.cmdCh))
+				case CreatePIN:
+					t.CreatePINScreen(func() {
+						t.cmdCh <- LoginMenu
+					}, exit(t.cmdCh))
+				case EnterPIN:
+					t.EnterPINScreen(func() {
+						t.cmdCh <- Vaults
+					}, exit(t.cmdCh))
+				case Vaults:
+					t.VaultsScreen()
+				case VaultEdit:
+					t.VaultEditScreen()
+				case SecretView:
+					t.SecretViewScreen()
+				case SecretEdit:
+					t.SecretEditScreen()
+				}
+			}
+		}
+	}()
 
 	return t
 }
