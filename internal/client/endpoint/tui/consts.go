@@ -1,7 +1,7 @@
 package tui
 
 const (
-	Exit         = "exit"
+	Exit         = "exitApp"
 	Logout       = "logout"
 	StartMenu    = "startMenu"
 	LoginMenu    = "loginScreen"

@@ -5,11 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"time"
-
+	"github.com/dsbasko/pass-keeper/internal/client/models"
 	"github.com/google/uuid"
 	"github.com/rivo/tview"
+	"os"
 )
 
 const (
@@ -22,26 +21,7 @@ const (
 	fieldWidth36  = 36
 )
 
-type SecretForView struct {
-	ID             string
-	Name           string
-	Secret         []byte
-	UnPackedSecret string
-	Comment        string
-	CreateAt       time.Time
-	UpdateAt       time.Time
-	VaultID        string
-	Type           string
-}
-type VaultForView struct {
-	ID       string
-	Name     string
-	CreateAt time.Time
-	UpdateAt time.Time
-	Comment  string
-}
-
-type OurTui struct {
+type TUI struct {
 	email     string
 	password  string
 	secretKey string
@@ -54,13 +34,14 @@ type OurTui struct {
 	pin       string
 	ExitFn    func()
 	LogoutFn  func()
-	VaultsFn  func() []VaultForView
-	SecretsFn func(string) []SecretForView
+	VaultsFn  func() ([]models.VaultForView, error)
+	SecretsFn func(string) ([]models.SecretForView, error)
+	provider  Providerer
 }
 
-var t = &OurTui{}
+var t = &TUI{}
 
-func (t *OurTui) YesNow(label string, yes, no func()) {
+func (t *TUI) YesNow(label string, yes, no func()) {
 	form := tview.NewForm().
 		AddButton("Yes", yes).
 		AddButton("No", no)
@@ -73,7 +54,7 @@ func (t *OurTui) YesNow(label string, yes, no func()) {
 	})
 }
 
-func (t *OurTui) StartMenuScreen(register, login, quit func()) {
+func (t *TUI) StartMenuScreen(register, login, quit func()) {
 	form := tview.NewForm().
 		AddButton("Register", register).
 		AddButton("Login", login).
@@ -85,7 +66,7 @@ func (t *OurTui) StartMenuScreen(register, login, quit func()) {
 	t.App.SetRoot(form, true)
 }
 
-func (t *OurTui) LoginScreen(login, quit func()) {
+func (t *TUI) LoginScreen(login, quit func()) {
 	form := tview.NewForm().
 		AddInputField("email", "", fieldWidth20, nil, func(text string) {
 			t.email = text
@@ -100,7 +81,7 @@ func (t *OurTui) LoginScreen(login, quit func()) {
 	t.App.SetRoot(form, true)
 }
 
-func (t *OurTui) RegisterScreen(register, quit func()) {
+func (t *TUI) RegisterScreen(register, quit func()) {
 	form := tview.NewForm().
 		AddInputField("email", "", fieldWidth20, nil, func(text string) {
 			t.email = text
@@ -118,7 +99,7 @@ func (t *OurTui) RegisterScreen(register, quit func()) {
 	t.App.SetRoot(form, true)
 }
 
-func (t *OurTui) CreatePINScreen(regPin, quit func()) {
+func (t *TUI) CreatePINScreen(regPin, quit func()) {
 	form := tview.NewForm().
 		AddPasswordField("PIN (10 symbols)", "", fieldWidth10, '*', func(text string) {
 			t.pin = text
@@ -133,7 +114,7 @@ func (t *OurTui) CreatePINScreen(regPin, quit func()) {
 	t.App.SetRoot(form, true)
 }
 
-func (t *OurTui) EnterPINScreen(enterPIN, quit func()) {
+func (t *TUI) EnterPINScreen(enterPIN, quit func()) {
 	form := tview.NewForm().
 		AddPasswordField("PIN (10 symbols)", "", fieldWidth10, '*', func(text string) {
 			t.pin = text
@@ -145,7 +126,7 @@ func (t *OurTui) EnterPINScreen(enterPIN, quit func()) {
 	t.App.SetRoot(form, true)
 }
 
-func (t *OurTui) MainMenuScreen(vaults, logout, quit func()) {
+func (t *TUI) MainMenuScreen(vaults, logout, quit func()) {
 	form := tview.NewForm().
 		AddButton("Vaults", vaults).
 		AddButton("Logout", logout).
@@ -157,7 +138,7 @@ func (t *OurTui) MainMenuScreen(vaults, logout, quit func()) {
 	t.App.SetRoot(form, true)
 }
 
-func (t *OurTui) VaultsScreen() {
+func (t *TUI) VaultsScreen() {
 	const rows = 5
 	grid := tview.NewGrid().
 		SetRows(rows, 0).
@@ -181,8 +162,11 @@ func (t *OurTui) VaultsScreen() {
 	vaultsTable.
 		SetCellSimple(0, 0, "Name").
 		SetCellSimple(0, 1, "Data")
-
-	for k, v := range t.VaultsFn() {
+	vaults, err := t.provider.GetVaults()
+	if err != nil {
+		//TODO модальное окно с ошибками
+	}
+	for k, v := range vaults {
 		cellName := tview.NewTableCell(v.Name).
 			SetSelectable(true).
 			SetClickedFunc(func() bool {
@@ -191,8 +175,11 @@ func (t *OurTui) VaultsScreen() {
 					SetCellSimple(0, 0, "Name").
 					SetCellSimple(0, 1, "Type").
 					SetCellSimple(0, 2, "Data")
-
-				for k, secret := range t.SecretsFn(v.ID) {
+				secrets, err := t.provider.GetSecrets(v.ID)
+				if err != nil {
+					//TODO модальное окно с ошибками
+				}
+				for k, secret := range secrets {
 					cellName := tview.NewTableCell(secret.Name).
 						SetClickedFunc(func() bool {
 							dataSecret, _ := json.MarshalIndent(secret, "", "  ")
@@ -250,11 +237,11 @@ func (t *OurTui) VaultsScreen() {
 
 	t.App.SetRoot(grid, true)
 }
-func (t *OurTui) VaultEditScreen()  {}
-func (t *OurTui) SecretViewScreen() {}
-func (t *OurTui) SecretEditScreen() {}
+func (t *TUI) VaultEditScreen()  {}
+func (t *TUI) SecretViewScreen() {}
+func (t *TUI) SecretEditScreen() {}
 
-func (t *OurTui) mainLoop() {
+func (t *TUI) mainLoop() {
 	defer t.App.EnableMouse(false)
 	for {
 		select {
@@ -280,23 +267,23 @@ func (t *OurTui) mainLoop() {
 					func() { t.cmdCh <- MainMenu })
 			case StartMenu:
 				t.StartMenuScreen(func() { t.cmdCh <- RegisterMenu },
-					func() { t.cmdCh <- LoginMenu }, exit(t.cmdCh))
+					func() { t.cmdCh <- LoginMenu }, exitApp(t.cmdCh))
 			case LoginMenu:
 				t.LoginScreen(func() {
 					t.cmdCh <- EnterPIN
-				}, exit(t.cmdCh))
+				}, exitApp(t.cmdCh))
 			case RegisterMenu:
 				t.RegisterScreen(func() {
 					t.cmdCh <- CreatePIN
-				}, exit(t.cmdCh))
+				}, exitApp(t.cmdCh))
 			case CreatePIN:
 				t.CreatePINScreen(func() {
 					t.cmdCh <- LoginMenu
-				}, exit(t.cmdCh))
+				}, exitApp(t.cmdCh))
 			case EnterPIN:
 				t.EnterPINScreen(func() {
 					t.cmdCh <- Vaults
-				}, exit(t.cmdCh))
+				}, exitApp(t.cmdCh))
 			case Vaults:
 				t.VaultsScreen()
 			case VaultEdit:
@@ -310,17 +297,19 @@ func (t *OurTui) mainLoop() {
 	}
 }
 
-func exit(cmdCh chan string) func() {
+func exitApp(cmdCh chan string) func() {
 	return func() {
 		cmdCh <- Exit
 	}
 }
 
-func Init(ctx context.Context, ch chan string) *OurTui {
+func Init(ctx context.Context, ch chan string, provider Providerer) *TUI {
 	t.App = tview.NewApplication()
 	t.App.EnableMouse(true)
 	t.cmdCh = ch
 	t.ctx = ctx
+	t.provider = provider
+
 	go t.mainLoop()
 
 	return t
