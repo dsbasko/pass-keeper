@@ -36,7 +36,7 @@ type TUI struct {
 	LogoutFn  func()
 	VaultsFn  func() ([]models.VaultForView, error)
 	SecretsFn func(string) ([]models.SecretForView, error)
-	provider  Providerer
+	provider  models.Providerer
 }
 
 var t = &TUI{}
@@ -303,7 +303,7 @@ func exitApp(cmdCh chan string) func() {
 	}
 }
 
-func Init(ctx context.Context, ch chan string, provider Providerer) *TUI {
+func Init(ctx context.Context, ch chan string, provider models.Providerer) *TUI {
 	t.App = tview.NewApplication()
 	t.App.EnableMouse(true)
 	t.cmdCh = ch

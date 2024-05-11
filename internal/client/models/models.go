@@ -2,6 +2,12 @@ package models
 
 import "time"
 
+type Providerer interface {
+	GetVaults() ([]VaultForView, error)
+	GetSecrets(vaultID string) ([]SecretForView, error)
+	//GetVault(vaultID string) (models.VaultForView, error)
+}
+
 type VaultForView struct {
 	ID       string
 	Name     string

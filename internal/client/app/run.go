@@ -9,7 +9,7 @@ import (
 )
 
 func tuiInit(ctx context.Context, cmdCh chan string) *tui.TUI {
-	tuiApp := tui.Init(ctx, cmdCh, provider.Init())
+	tuiApp := tui.Init(ctx, cmdCh, provider.Init(provider.Mock))
 	tuiApp.ExitFn = func() { cmdCh <- tui.Exit }
 	tuiApp.LogoutFn = func() { cmdCh <- tui.Logout }
 	go func() {

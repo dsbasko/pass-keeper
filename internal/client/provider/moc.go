@@ -9,10 +9,6 @@ import (
 type MockProvider struct {
 }
 
-func Init() *MockProvider {
-	return &MockProvider{}
-}
-
 func (provider *MockProvider) GetSecrets(id string) ([]models.SecretForView, error) {
 	TestList := []models.SecretForView{{
 		ID:             "1",
@@ -67,6 +63,7 @@ func (provider *MockProvider) GetSecrets(id string) ([]models.SecretForView, err
 	}}
 	return TestList, nil
 }
+
 func (provider *MockProvider) GetVaults() ([]models.VaultForView, error) {
 	var vaults []models.VaultForView
 	for i := 0; i < 10; i++ {
