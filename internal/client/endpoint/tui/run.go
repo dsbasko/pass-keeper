@@ -3,7 +3,6 @@ package tui
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/dsbasko/pass-keeper/internal/client/models"
 	"github.com/google/uuid"
@@ -139,76 +138,23 @@ func (t *TUI) MainMenuScreen(vaults, logout, quit func()) {
 }
 
 func (t *TUI) VaultsScreen() {
-	const rows = 5
-	grid := tview.NewGrid().
-		SetRows(rows, 0).
-		SetColumns(-2, -2, -1).
-		SetBorders(true)
-
-	secretScreen := tview.NewForm()
-	secretScreen.SetTitle("Secret")
-
-	secretsTable := tview.NewTable().
-		SetBorders(true).
-		SetFixed(1, 1).
-		SetSelectable(false, false)
-	secretsTable.SetTitle("Secrets")
 
 	vaultsTable := tview.NewTable().
 		SetBorders(true).
 		SetFixed(1, 1).
-		SetSelectable(false, false)
+		SetSelectable(true, false)
 	vaultsTable.SetTitle("Vaults")
 	vaultsTable.
-		SetCellSimple(0, 0, "Name").
-		SetCellSimple(0, 1, "Data")
+		SetCell(0, 0, tview.NewTableCell("Name").SetSelectable(false)).
+		SetCell(0, 1, tview.NewTableCell("Data").SetSelectable(false))
+
 	vaults, err := t.provider.GetVaults()
 	if err != nil {
 		//TODO модальное окно с ошибками
 	}
 	for k, v := range vaults {
 		cellName := tview.NewTableCell(v.Name).
-			SetSelectable(true).
 			SetClickedFunc(func() bool {
-				secretsTable.Clear()
-				secretsTable.
-					SetCellSimple(0, 0, "Name").
-					SetCellSimple(0, 1, "Type").
-					SetCellSimple(0, 2, "Data")
-				secrets, err := t.provider.GetSecrets(v.ID)
-				if err != nil {
-					//TODO модальное окно с ошибками
-				}
-				for k, secret := range secrets {
-					cellName := tview.NewTableCell(secret.Name).
-						SetClickedFunc(func() bool {
-							dataSecret, _ := json.MarshalIndent(secret, "", "  ")
-
-							secretScreen.Clear(true)
-							secretScreen.
-								AddButton("view", func() {}).
-								AddButton("edit", func() {}).
-								AddTextView("Secret", string(dataSecret), fieldWidth, fieldHeight, true, true)
-
-							grid.
-								AddItem(secretScreen, 1, 2, 1, 1, minGridHeight, minGridWidth, true)
-
-							return true
-						})
-					cellType := tview.NewTableCell(secret.Type)
-					cellData := tview.NewTableCell(fmt.Sprintf("[%s][%s]\n[%s]",
-						secret.VaultID,
-						v.CreateAt.Format("2006-01-02 15:04:05"),
-						v.Comment,
-					)).SetExpansion(1)
-					secretsTable.SetCell(k+1, 0, cellName)
-					secretsTable.SetCell(k+1, 1, cellType)
-					secretsTable.SetCell(k+1, 2, cellData)
-				}
-
-				grid.AddItem(vaultsTable, 1, 0, 1, 1, minGridHeight, minGridWidth, true)
-				grid.AddItem(secretsTable, 1, 1, 1, 1, minGridHeight, minGridWidth, false)
-				t.App.Sync()
 				return true
 			})
 		cellComment := tview.NewTableCell(fmt.Sprintf("[%s]\n[%s]",
@@ -221,22 +167,45 @@ func (t *TUI) VaultsScreen() {
 			SetCell(k+1, 1, cellComment)
 	}
 
-	menu := tview.NewForm().
-		AddButton("Logout", t.LogoutFn).
-		AddButton("Exit", t.ExitFn)
-
-	menu.SetBorder(true).
-		SetTitle("Menu").
-		SetTitleAlign(tview.AlignCenter)
-
-	grid.
-		AddItem(vaultsTable, 1, 0, 1, 1, minGridHeight, minGridWidth, true).
-		AddItem(secretsTable, 1, 1, 1, 1, minGridHeight, minGridWidth, false).
-		AddItem(secretScreen, 1, 2, 1, 1, minGridHeight, minGridWidth, false).
-		AddItem(menu, 0, 0, 1, 3, minGridHeight, 0, false)
-
-	t.App.SetRoot(grid, true)
+	t.App.SetRoot(vaultsTable, true)
 }
+
+func (t *TUI) SecretsScreen() {
+	secretsTable := tview.NewTable().
+		SetBorders(true).
+		SetFixed(1, 1).
+		SetSelectable(true, false)
+	secretsTable.SetTitle("Secrets")
+
+	secretsTable.
+		SetCell(0, 0, tview.NewTableCell("Name").SetSelectable(false)).
+		SetCell(0, 1, tview.NewTableCell("Type").SetSelectable(false)).
+		SetCell(0, 2, tview.NewTableCell("Data").SetSelectable(false))
+
+	secrets, err := t.provider.GetSecrets("")
+	if err != nil {
+		//TODO модальное окно с ошибками
+	}
+	for k, secret := range secrets {
+		cellName := tview.NewTableCell(secret.Name).
+			SetClickedFunc(func() bool {
+
+				return true
+			})
+		cellType := tview.NewTableCell(secret.Type)
+		cellData := tview.NewTableCell(fmt.Sprintf("[%s][%s]\n[%s]",
+			secret.VaultID,
+		)).SetExpansion(1)
+		secretsTable.SetCell(k+1, 0, cellName)
+		secretsTable.SetCell(k+1, 1, cellType)
+		secretsTable.SetCell(k+1, 2, cellData)
+	}
+
+	//cellComment := tview.NewTableCell(fmt.Sprintf("[%s]\n[%s]")).SetExpansion(1)
+
+	t.App.SetRoot(secretsTable, true)
+}
+
 func (t *TUI) VaultEditScreen()  {}
 func (t *TUI) SecretViewScreen() {}
 func (t *TUI) SecretEditScreen() {}
