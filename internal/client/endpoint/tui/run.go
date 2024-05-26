@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/dsbasko/pass-keeper/internal/client/models"
+	"github.com/gdamore/tcell/v2"
 	"github.com/google/uuid"
 	"github.com/rivo/tview"
 	"os"
@@ -19,6 +20,12 @@ const (
 	fieldWidth20  = 20
 	fieldWidth36  = 36
 )
+
+func newPrimitive(text string) tview.Primitive {
+	return tview.NewTextView().
+		SetTextAlign(tview.AlignCenter).
+		SetText(text)
+}
 
 type TUI struct {
 	email     string
@@ -138,23 +145,33 @@ func (t *TUI) MainMenuScreen(vaults, logout, quit func()) {
 }
 
 func (t *TUI) VaultsScreen() {
-
 	vaultsTable := tview.NewTable().
 		SetBorders(true).
 		SetFixed(1, 1).
 		SetSelectable(true, false)
 	vaultsTable.SetTitle("Vaults")
+	vaultsTable.SetSelectedFunc(func(row, columnt int) {
+		cell := vaultsTable.GetCell(row, 0)
+		t.SecretsScreen(cell.Text)
+	})
 	vaultsTable.
-		SetCell(0, 0, tview.NewTableCell("Name").SetSelectable(false)).
-		SetCell(0, 1, tview.NewTableCell("Data").SetSelectable(false))
+		SetCell(0, 0, tview.NewTableCell("ID").SetSelectable(false)).
+		SetCell(0, 1, tview.NewTableCell("Name").SetSelectable(false)).
+		SetCell(0, 2, tview.NewTableCell("Data").SetSelectable(false))
 
 	vaults, err := t.provider.GetVaults()
 	if err != nil {
 		//TODO модальное окно с ошибками
 	}
 	for k, v := range vaults {
+		cellID := tview.NewTableCell(v.ID).
+			SetClickedFunc(func() bool {
+				t.SecretsScreen(v.ID)
+				return true
+			})
 		cellName := tview.NewTableCell(v.Name).
 			SetClickedFunc(func() bool {
+				t.SecretsScreen(v.ID)
 				return true
 			})
 		cellComment := tview.NewTableCell(fmt.Sprintf("[%s]\n[%s]",
@@ -163,26 +180,46 @@ func (t *TUI) VaultsScreen() {
 		)).SetExpansion(1)
 
 		vaultsTable.
-			SetCell(k+1, 0, cellName).
-			SetCell(k+1, 1, cellComment)
+			SetCell(k+1, 0, cellID).
+			SetCell(k+1, 1, cellName).
+			SetCell(k+1, 2, cellComment)
 	}
 
-	t.App.SetRoot(vaultsTable, true)
+	flex := tview.NewFlex()
+	flex.SetDirection(tview.FlexRow)
+	flex.AddItem(newPrimitive("Vaults"), 0, 10, false)
+	flex.AddItem(vaultsTable, 0, 100, true)
+	flex.AddItem(newPrimitive("Esc for return, 'e' for edit, 'enter' for view secrets"), 0, 10, false)
+	t.App.SetRoot(flex, true)
 }
 
-func (t *TUI) SecretsScreen() {
+func (t *TUI) SecretsScreen(vaultID string) {
 	secretsTable := tview.NewTable().
 		SetBorders(true).
 		SetFixed(1, 1).
 		SetSelectable(true, false)
+	secretsTable.SetSelectedFunc(func(row, columnt int) {
+		cell := secretsTable.GetCell(row, 0)
+		t.SecretViewScreen(cell.Text)
+	})
 	secretsTable.SetTitle("Secrets")
+	secretsTable.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEsc:
+			t.VaultsScreen()
+			//case tcell.KeyDEL: //TODO удаление секрета
+			//case tcell.Key: //TODO удаление секрета
+		}
+		return event
+	})
 
 	secretsTable.
-		SetCell(0, 0, tview.NewTableCell("Name").SetSelectable(false)).
-		SetCell(0, 1, tview.NewTableCell("Type").SetSelectable(false)).
-		SetCell(0, 2, tview.NewTableCell("Data").SetSelectable(false))
+		SetCell(0, 0, tview.NewTableCell("ID").SetSelectable(false)).
+		SetCell(0, 1, tview.NewTableCell("Name").SetSelectable(false)).
+		SetCell(0, 2, tview.NewTableCell("Type").SetSelectable(false)).
+		SetCell(0, 3, tview.NewTableCell("Data").SetSelectable(false))
 
-	secrets, err := t.provider.GetSecrets("")
+	secrets, err := t.provider.GetSecrets(vaultID)
 	if err != nil {
 		//TODO модальное окно с ошибками
 	}
@@ -196,18 +233,68 @@ func (t *TUI) SecretsScreen() {
 		cellData := tview.NewTableCell(fmt.Sprintf("[%s][%s]\n[%s]",
 			secret.VaultID,
 		)).SetExpansion(1)
-		secretsTable.SetCell(k+1, 0, cellName)
-		secretsTable.SetCell(k+1, 1, cellType)
-		secretsTable.SetCell(k+1, 2, cellData)
+		secretsTable.SetCellSimple(k+1, 0, secret.ID)
+		secretsTable.SetCell(k+1, 1, cellName)
+		secretsTable.SetCell(k+1, 2, cellType)
+		secretsTable.SetCell(k+1, 3, cellData)
 	}
 
 	//cellComment := tview.NewTableCell(fmt.Sprintf("[%s]\n[%s]")).SetExpansion(1)
+	flex := tview.NewFlex()
+	flex.SetDirection(tview.FlexRow)
+	flex.AddItem(newPrimitive("Secrets"), 0, 10, false)
+	flex.AddItem(secretsTable, 0, 100, true)
+	flex.AddItem(newPrimitive("Esc for return to vaults, 'e' for edit, 'enter' for view secrets, 'delete' for delete secret"), 0, 10, false)
 
-	t.App.SetRoot(secretsTable, true)
+	t.App.SetRoot(flex, true)
 }
 
-func (t *TUI) VaultEditScreen()  {}
-func (t *TUI) SecretViewScreen() {}
+func (t *TUI) VaultEditScreen() {}
+
+func (t *TUI) SecretViewScreen(secretID string) {
+	//todo: получать секрет по ID
+	//todo: персональный вью для каждого типа секретов
+	//todo: сделать таблицей
+	secret, err := t.provider.GetSecret(secretID)
+	if err != nil {
+		//todo модальное окно с ошибкой
+		return
+	}
+	secretTable := tview.NewTable()
+	secretTable.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEsc:
+			t.SecretsScreen(secret.VaultID)
+			//case tcell.KeyDEL: //TODO удаление секрета
+			//case tcell.Key: //TODO Редактирование секрета
+		}
+		return event
+	})
+	r := 0
+	secretTable.SetCellSimple(r, 0, Name).SetCellSimple(r, 1, secret.Name)
+	r++
+	secretTable.SetCellSimple(r, 0, Text).SetCellSimple(r, 1, secret.UnPackedSecret)
+	r++
+	secretTable.SetCellSimple(r, 0, ID).SetCellSimple(r, 1, secret.ID)
+	r++
+	secretTable.SetCellSimple(r, 0, VaultID).SetCellSimple(r, 1, secret.VaultID)
+	r++
+	secretTable.SetCellSimple(r, 0, Data).SetCellSimple(r, 1, string(secret.Secret))
+	r++
+	secretTable.SetCellSimple(r, 0, CreateAt).SetCellSimple(r, 1, secret.CreateAt.String())
+	r++
+	secretTable.SetCellSimple(r, 0, UpdateAt).SetCellSimple(r, 1, secret.UpdateAt.String())
+	r++
+	secretTable.SetCellSimple(r, 0, Comment).SetCellSimple(r, 1, secret.Comment)
+
+	flex := tview.NewFlex()
+	flex.SetDirection(tview.FlexRow)
+	flex.AddItem(newPrimitive("Secret"), 0, 10, false)
+	flex.AddItem(secretTable, 0, 100, true)
+	flex.AddItem(newPrimitive("Esc for return to vaults, 'e' for edit, 'tab' for delete secretTable"), 0, 10, false)
+
+	t.App.SetRoot(flex, true)
+}
 func (t *TUI) SecretEditScreen() {}
 
 func (t *TUI) mainLoop() {
@@ -255,10 +342,12 @@ func (t *TUI) mainLoop() {
 				}, exitApp(t.cmdCh))
 			case Vaults:
 				t.VaultsScreen()
+			case Secrets:
+				t.SecretsScreen("")
 			case VaultEdit:
 				t.VaultEditScreen()
 			case SecretView:
-				t.SecretViewScreen()
+				t.SecretViewScreen("")
 			case SecretEdit:
 				t.SecretEditScreen()
 			}

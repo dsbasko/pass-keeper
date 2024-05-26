@@ -1,10 +1,14 @@
 package models
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 type Providerer interface {
 	GetVaults() ([]VaultForView, error)
 	GetSecrets(vaultID string) ([]SecretForView, error)
+	GetSecret(secretID string) (SecretForView, error)
 	//GetVault(vaultID string) (models.VaultForView, error)
 }
 
@@ -27,3 +31,7 @@ type SecretForView struct {
 	VaultID        string
 	Type           string
 }
+
+var (
+	ErrNotFoundSecret = errors.New("not found secret")
+)

@@ -1,6 +1,17 @@
 package tui
 
-const (
+const ( //Secret form
+	Name     = "Name"
+	Text     = "Text"
+	ID       = "ID"
+	VaultID  = "Vault ID"
+	Data     = "Data"
+	CreateAt = "Create at"
+	UpdateAt = "Update at"
+	Comment  = "Comment"
+)
+
+const ( //screens
 	Exit         = "exitApp"
 	Logout       = "logout"
 	StartMenu    = "startMenu"
@@ -10,6 +21,7 @@ const (
 	EnterPIN     = "enterPIN"
 	MainMenu     = "mainMenu"
 	Vaults       = "vaults"
+	Secrets      = "secrets"
 	Vault        = "vault"
 	VaultEdit    = "vaultEdit"
 	SecretView   = "secret"
